@@ -1,6 +1,13 @@
 Blank Page Detection
 ====================
 
+Setup
+-----
+Add `pdfbox-app-2.0.7.jar` to path
+
+
+Main Process
+------------
 1. Run pdf_page_summaries to find pages that contain text marks and pages that contain non-text marks.
 2. Examine pages with only text marks and decide which ones are effectively blank
 
@@ -21,3 +28,8 @@ These are pages that have only text marks.
 2. Page number only
 3. Watermark only
 4. Page number and watermark.
+
+
+TODO
+----
+Resurrect `text = dehyphenate(text)` in `html_to_text.py`

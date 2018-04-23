@@ -9,6 +9,8 @@ from subprocess import CalledProcessError, Popen, PIPE
 import re
 from utils_peter import save_json
 from html_to_text import update_summary
+import json
+
 
 KBYTE = 1024
 MBYTE = 1024 * 1024
@@ -22,6 +24,12 @@ permission_errors = [
     'You do not have permission to extract text',
     'Permission Error'
 ]
+
+
+PDF_BOX = './pdfbox-app-2.0.7.jar'
+PDF_SUMMARIZE = './pdf_page_summaries'
+for path in [PDF_BOX, PDF_SUMMARIZE]:
+    assert os.path.exists(path), path
 
 
 def run_command(cmd, raise_on_error=True):
@@ -50,6 +58,18 @@ def run_command(cmd, raise_on_error=True):
     return p.returncode, stdout, stderr
 
 
+def pdf_summarize(pdf_path):
+    cmd = [PDF_SUMMARIZE, pdf_path]
+    retcode, stdout, stderr = run_command(cmd, raise_on_error=False)
+    ok = retcode == 0
+    if not ok:
+        print('FAILURE: retcode=%d stderr=<%s>' % (retcode, stderr))
+        return ok, '', []
+    text = stdout.decode('utf-8')
+    summary = json.loads(text)
+    return ok, summary
+
+
 def pdf_to_pages(pdf_path):
     """Extract pages from PDF file `pdf_path` using PdfBox
         Returns: ok, text, pages
@@ -57,7 +77,7 @@ def pdf_to_pages(pdf_path):
             text: Text of PDF in html format
             pages: Pages of PDF in html format
     """
-    cmd = ['java', '-jar', 'pdfbox-app-2.0.7.jar', 'ExtractText',
+    cmd = ['java', '-jar', PDF_BOX, 'ExtractText',
            '-html', '-console', pdf_path]
     retcode, stdout, stderr = run_command(cmd, raise_on_error=False)
     ok = retcode == 0
@@ -84,6 +104,12 @@ def pdf_num_pages(pdf_path):
     return ok, int(m.group(1))
 
 
+xlation = {
+    "GraphMarkedPages": 'marked_graph',
+    "TextMarkedPages": 'marked_text',
+    }
+
+
 def save_pdf_summary(pdf_path, summary_path):
     """Extract text from `pdf`, break it into pages and write the summary to 'summary_path
     """
@@ -104,8 +130,13 @@ def save_pdf_summary(pdf_path, summary_path):
     assert pages_summary['NumPages'] == summary['n_pages'], (pdf_path, pages_summary['NumPages'],
                                                              summary['n_pages'])
     for k, v in pages_summary.items():
-        if k != 'NumPages':
-            summary[k] = valid
+        if k == 'NumPages':
+            continue
+        elif k in xlation:
+            summary[xlation[k]] = v
+        else:
+            summary[k] = v
+
     # NumPages         int
     # Width            float64
     # Height           float64
@@ -114,7 +145,9 @@ def save_pdf_summary(pdf_path, summary_path):
 
     update_summary(summary)
 
-    outpath = os.path.abspath('%s.json' % summary_path)
+    if not summary_path.endswith('.json'):
+        summary_path = '%s.json' % summary_path
+    outpath = os.path.abspath(summary_path)
     save_json(outpath, summary)
 
 
@@ -129,21 +162,42 @@ def sha1_digest(path):
     return sha1.hexdigest()
 
 
-def extract_name(path, start=None, whole=False):
+def extract_name(path, root, whole=False):
+    # print(path)
+    # assert False
 
-    if start is None:
-        name = os.path.basename(path)
-    else:
-        name = os.path.relpath(path, start=start)
+    name = os.path.relpath(path, root)
+    while True:
+        head, tail = os.path.split(name)
+        if not (head and tail):
+            break
+        name = '_'.join((head, tail))
 
-    direct = os.path.dirname(path)
-    for special in ['blank_pages', 'spool', 'MOB-810', 'xarc']:
-        if special in direct and special not in name:
-            name = '%s_%s' % (special, name)
+    # if root is None:
+    #     name = os.path.basename(path)
+    # else:
+    #     name = os.path.relpath(path, start=root)
+
+    # direct = os.path.dirname(path)
+    # for special in ['blank_pages', 'spool', 'MOB-810', 'xarc']:
+    #     if special in direct and special not in name:
+    #         name = '%s_%s' % (special, name)
 
     if whole:
         return name
     return os.path.splitext(name)[0]
+
+
+def flatten_path(path, root):
+    path = os.path.relpath(path, root)
+    while True:
+        head, tail = os.path.split(path)
+        if not (head and tail):
+            break
+        path = '_'.join((head, tail))
+    path = os.path.join(root, path)
+    assert os.path.isfile(path), path
+    return path
 
 
 def ascii_count(s, limit):
@@ -155,7 +209,7 @@ def punc_count(s):
                                      (ord('a') <= ord(c) <= ord('z')))])
 
 
-def find_keeper(paths):
+def find_keeper(paths, root):
     """Return the 1 file in of the identical files in `paths` that we will use"""
     paths = sorted(paths, key=lambda x: (-len(x), x))
     for path in paths:
@@ -163,8 +217,8 @@ def find_keeper(paths):
         if 'xarc' in path and not any('xarc' in p for p in other_paths):
             print('1 %s -> %s' % (other_paths, path))
             return {path}
-        name = extract_name(path)
-        other_names = [extract_name(p) for p in other_paths]
+        name = extract_name(path, root)
+        other_names = [extract_name(p, root) for p in other_paths]
 
         if all(name in p for p in other_names):
             print('2 %s -> %s' % (other_paths, path))
@@ -185,27 +239,34 @@ def find_keeper(paths):
 
 def corpus_to_keepers(pdf_dir):
     """Return the unique files in `pdf_dir` that we will use"""
+    print('corpus_to_keepers: pdf_dir="%s"' % pdf_dir)
+
+    path_list = list(glob(os.path.join(pdf_dir, '**'), recursive=True))
+    print('corpus_to_keepers: %d total' % len(path_list))
+    path_list = [path for path in path_list if os.path.isfile(path)]
+    print('corpus_to_keepers: %d files' % len(path_list))
+    path_list = [path for path in path_list if os.path.splitext(path)[1] == '.pdf']
+    print('corpus_to_keepers: %d pdf files' % len(path_list))
+    # for i, path in enumerate(path_list):
+    #     assert os.path.isfile(path), path
+    # path_list = [flatten_path(path, pdf_dir) for path in path_list]
+
     sha1_paths = defaultdict(set)
     xarc = []
-    for i, path in enumerate(glob(os.path.join(pdf_dir, '**'), recursive=True)):
-        # print('%4d: %s' % (i, fn))
-        if not os.path.isfile(path):
-            continue
-        _, ext = os.path.splitext(path)
-        if ext != '.pdf':
-            continue
+    for i, path in enumerate(path_list):
+        assert os.path.isfile(path), path
         assert os.path.abspath(path) == path, (os.path.abspath(path), path)
         sha1 = sha1_digest(path)
         sha1_paths[sha1].add(path)
         if 'xarc' in path:
             xarc.append(path)
+    print('%d xarc files of %d (raw total: %d)' % (len(xarc), len(sha1_paths), i))
     assert xarc
-    print('%d xarc files' % len(xarc))
 
     for sha1 in sha1_paths:
         paths = sha1_paths[sha1]
         if len(paths) > 1:
-            sha1_paths[sha1] = find_keeper(paths)
+            sha1_paths[sha1] = find_keeper(paths, pdf_dir)
 
     keepers = []
     for paths in sha1_paths.values():
@@ -232,7 +293,7 @@ def corpus_to_text(pdf_dir, summary_dir):
         assert os.path.abspath(pdf_path) == pdf_path
 
         if min_size <= size <= max_size:
-            name = extract_name(pdf_path)
+            name = extract_name(pdf_path, pdf_dir)
             assert not name.endswith('.json'), name
             name = '%s.json' % name
             summary_path = os.path.join(summary_dir, name)
@@ -251,7 +312,7 @@ def corpus_to_text(pdf_dir, summary_dir):
 
 
 pdf_dir = '~/testdata'
-summary_dir = '~/testdata.pages0'
+summary_dir = '~/testdata.pages1'
 pdf_dir = os.path.expanduser(pdf_dir)
 summary_dir = os.path.expanduser(summary_dir)
 print('pdf_dir=%s' % pdf_dir)

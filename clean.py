@@ -3,7 +3,7 @@
 """
 import string
 import re
-from ngrams import Pw
+# from ngrams import Pw
 
 
 RE_SPACE = re.compile(r'[\t ]+', re.MULTILINE | re.DOTALL)

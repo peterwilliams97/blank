@@ -280,12 +280,13 @@ def corpus_to_keepers(pdf_dir):
 
 
 exclusions = {
-    '/Users/pcadmin/testdata/Year_8_Pythagoras_Booklet.pdf',
-    '/Users/pcadmin/testdata/missing.pdf',
-    '/Users/pcadmin/testdata/nsdi17-gowda.pdf',
-    '/Users/pcadmin/testdata/nsdi17-horn-daniel.pdf',
-    '/Users/pcadmin/testdata/rdp2018-03.pdf',
+    '~/testdata/Year_8_Pythagoras_Booklet.pdf',
+    '~/testdata/missing.pdf',
+    '~/testdata/nsdi17-gowda.pdf',
+    '~/testdata/nsdi17-horn-daniel.pdf',
+    '~/testdata/rdp2018-03.pdf',
 }
+exclusions = {os.path.expanduser(path) for path in exclusions}
 
 
 def corpus_to_text(pdf_dir, summary_dir):

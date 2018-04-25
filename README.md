@@ -39,7 +39,7 @@ These are pages that have only text marks.
 
 TODO
 ----
-Fix page number detection for /Users/pcadmin/testdata/Year_8_Pythagoras_Booklet.pdf
+Fix page number detection for ~/testdata/Year_8_Pythagoras_Booklet.pdf
 use text location as a hint
 Powerpoint decks where successive pages are supersets of previous page. Can we find the last page
 in such a sequence?

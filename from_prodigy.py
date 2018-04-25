@@ -66,7 +66,7 @@ def to_prodigy(path, page, text):
                },
         }
     """
-    # 'file:///Users/pcadmin/testdata/AF+handout+scanned.pdf'
+    # 'file://~/testdata/AF+handout+scanned.pdf'
     # path = join(pdf_dir, name)
     # assert exists(path), (path, [pdf_dir, name])
     # url = 'file://%s#page=%d' % (path, page)

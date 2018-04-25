@@ -3,7 +3,7 @@
 """
 import string
 import re
-# from ngrams import Pw
+from ngrams import Pw
 
 
 RE_SPACE = re.compile(r'[\t ]+', re.MULTILINE | re.DOTALL)
@@ -58,5 +58,3 @@ def dehyphenate(text):
     # print([type(x) for x in (text, RE_BREAK, unbreak)])
     unbroke = RE_BREAK.sub(unbreak, text)
     return unbroke
-
-

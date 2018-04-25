@@ -170,7 +170,7 @@ def score(cpts, do_mean, verbose=False):
 
 
 def rank_score(ranks):
-    return -sum([2** (-i) for i in ranks]) / len(ranks)
+    return -sum([2 ** (-i) for i in ranks]) / len(ranks)
 
 
 def best_cpt_join(cpts, do_mean):
@@ -245,10 +245,6 @@ if False:
     assert False
 
 
-
-
-
-
 def combine(Pfirst, first, Prem_rem):
     "Combine first and rem results into one (probability, words) pair."
     Prem, rem = Prem_rem
@@ -258,6 +254,7 @@ def combine(Pfirst, first, Prem_rem):
 depth = 0
 depth_dict = defaultdict(int)
 
+
 @memo
 def segment2(text, prev='<S>'):
     "Return (log P(words), words), where words is the best segmentation."
@@ -266,7 +263,7 @@ def segment2(text, prev='<S>'):
     if not text:
         return 0.0, []
     depth += 1
-    depth_dict[depth] +=1
+    depth_dict[depth] += v1
     candidates = [combine(log10(cPw(first, prev)), first, segment2(rem, first))
                   for first, rem in splits(text)]
     # print('>>>', depth, text, prev, max(candidates))
@@ -274,7 +271,7 @@ def segment2(text, prev='<S>'):
     return max(candidates)
 
 
-if False:
+if __name__ == '__main__':
     text = "p rinting by finding c lasses"
     text = text.replace(' ', '')
     print('text=%d %s' % (len(text), text))
@@ -282,4 +279,5 @@ if False:
     print(text)
     for depth in sorted(depth_dict):
         print('%3d: %2d' % (depth, depth_dict[depth]))
+
 

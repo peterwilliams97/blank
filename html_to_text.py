@@ -4,7 +4,7 @@
 import os
 import json
 from bs4 import BeautifulSoup
-# from clean import dehyphenate
+from clean import dehyphenate
 
 
 # summary=['n_chars', 'n_pages', 'name', 'page_lines', 'page_summaries', 'page_texts', 'pages', 'text']
@@ -44,7 +44,7 @@ def html_to_text(page):
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     # drop blank lines
     text = '\n'.join(chunk for chunk in chunks if chunk)
-    #  text = dehyphenate(text) !@#$ Ressurrect
+    text = dehyphenate(text)
 
     return text
 

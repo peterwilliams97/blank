@@ -7,7 +7,7 @@ from collections import defaultdict, OrderedDict
 import hashlib
 from subprocess import CalledProcessError, Popen, PIPE
 import re
-from utils_peter import save_json
+from utils_peter import pdf_dir, summary_dir, save_json
 from html_to_text import update_summary
 import json
 
@@ -17,7 +17,7 @@ MBYTE = 1024 * 1024
 
 # Settings
 min_size = 1 * KBYTE
-max_size = 10 * MBYTE
+max_size = 10000 * MBYTE
 
 
 permission_errors = [
@@ -64,7 +64,7 @@ def pdf_summarize(pdf_path):
     ok = retcode == 0
     if not ok:
         print('FAILURE: retcode=%d stderr=<%s>' % (retcode, stderr))
-        return ok, '', []
+        return ok, None
     text = stdout.decode('utf-8')
     summary = json.loads(text)
     return ok, summary
@@ -119,6 +119,7 @@ def save_pdf_summary(pdf_path, summary_path):
     print('save_pdf_summary: %s->%s' % (pdf_path, summary_path))
 
     summary = {
+        'path': pdf_path,
         'name': os.path.basename(pdf_path),
         'n_pages': len(pages_html),
         'n_chars': sum(len(page) for page in pages_html),
@@ -127,6 +128,8 @@ def save_pdf_summary(pdf_path, summary_path):
     }
 
     ok, pages_summary = pdf_summarize(pdf_path)
+    if not ok:
+        return
     assert pages_summary['NumPages'] == summary['n_pages'], (pdf_path, pages_summary['NumPages'],
                                                              summary['n_pages'])
     for k, v in pages_summary.items():
@@ -276,6 +279,15 @@ def corpus_to_keepers(pdf_dir):
     return keepers
 
 
+exclusions = {
+    '/Users/pcadmin/testdata/Year_8_Pythagoras_Booklet.pdf',
+    '/Users/pcadmin/testdata/missing.pdf',
+    '/Users/pcadmin/testdata/nsdi17-gowda.pdf',
+    '/Users/pcadmin/testdata/nsdi17-horn-daniel.pdf',
+    '/Users/pcadmin/testdata/rdp2018-03.pdf',
+}
+
+
 def corpus_to_text(pdf_dir, summary_dir):
     """Convert the unique PDF files in `pdf_dir` to file with the same name in `summary_dir`
     """
@@ -306,18 +318,20 @@ def corpus_to_text(pdf_dir, summary_dir):
         print()
 
     print('^' * 100)
+    started = set()
     for i, (pdf_path, summary_path) in enumerate(pdf_summary.items()):
+        if pdf_path in exclusions:
+            started.add(pdf_path)
+            continue
+        # if len(started) < len(exclusions):
+        #     continue
         print('%4d: %s -> %s' % (i, pdf_path, summary_path), flush=True)
         save_pdf_summary(pdf_path, summary_path)
 
 
-pdf_dir = '~/testdata'
-summary_dir = '~/testdata.pages1'
-pdf_dir = os.path.expanduser(pdf_dir)
-summary_dir = os.path.expanduser(summary_dir)
-print('pdf_dir=%s' % pdf_dir)
-print('summary_dir=%s' % summary_dir)
-
-
 if __name__ == '__main__':
     corpus_to_text(pdf_dir, summary_dir)
+    print('=' * 80)
+    for directory in (pdf_dir, summary_dir):
+        path_list = list(glob(os.path.join(directory, '**'), recursive=True))
+        print('%s: %d files' % (directory, len(path_list)))

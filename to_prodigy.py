@@ -66,13 +66,7 @@ def to_prodigy(path, page, text):
                },
         }
     """
-    # 'file://~/testdata/AF+handout+scanned.pdf'
-    # path = join(pdf_dir, name)
-    # assert exists(path), (path, [pdf_dir, name])
-    # url = 'file://%s#page=%d' % (path, page)
-    # http://localhost:8000/-patente-de-invencion-1445369-1.pdf
     name = relpath(path, pdf_dir)
-    # assert False, name
     url = 'http://localhost:8000/%s#page=%d' % (name, page)
 
     return {
@@ -84,4 +78,5 @@ def to_prodigy(path, page, text):
     }
 
 
-save_pages(summary_dir)
+if __name__ == '__main__':
+    save_pages(summary_dir)

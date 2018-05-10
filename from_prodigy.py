@@ -8,11 +8,22 @@ from utils_peter import pdf_dir, save_json, load_jsonl
 
 
 def load_pages():
-    prodigy_list = load_jsonl('all.pages.jsonl')
+    if True:
+        root = 'model1'
+        prodigy_list = []
+        for name in ['evaluation.jsonl', 'training.jsonl']:
+            path = join(root, name)
+            pl = load_jsonl(path)
+            print('%s: %d' % (path, len(pl)))
+            prodigy_list.extend(pl)
+    else:
+        prodigy_list = load_jsonl('all.pages.jsonl')
     ppt_list = [from_prodigy(d) for d in prodigy_list]
     path_pages = collect_pages(ppt_list)
     save_json('path-pages.json', path_pages)
-    print('saved to path-pages.json')
+    pages = sum(len(p) for p in path_pages.values())
+    print('saved to path-pages.json : %d paths %d pages' % (
+        len(path_pages), pages))
 
 
 RE_URL = re.compile(r'^http://localhost:8000/(.+?)#page=(\d+)$')
@@ -42,7 +53,6 @@ def from_prodigy(json_dict):
     path = join(pdf_dir, name)
 
     return path, page, text
-
 
 
 if __name__ == '__main__':

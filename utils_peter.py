@@ -22,6 +22,11 @@ def save_json(path, obj):
         json.dump(obj, f, indent=4, sort_keys=True)
 
 
+def load_jsonl(path):
+    with jsonlines.open(path, mode='r') as r:
+       return list(r)
+
+
 def save_jsonl(path, obj):
     with jsonlines.open(path, mode='w') as w:
         w.write_all(obj)

@@ -30,10 +30,10 @@ RE_URL = re.compile(r'^http://localhost:8000/(.+?)#page=(\d+)$')
 
 
 def collect_pages(ppt_list):
-    path_pages = defaultdict(list)
+    path_pages = defaultdict(set)
     for path, page, text in ppt_list:
-        path_pages[path].append(page)
-    return path_pages
+        path_pages[path].add(page)
+    return {path: sorted(pages) for path, pages in path_pages.items()}
 
 
 def from_prodigy(json_dict):

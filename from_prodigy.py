@@ -9,7 +9,7 @@ from utils_peter import pdf_dir, save_json, load_jsonl
 
 def load_pages():
     if True:
-        root = 'model1'
+        root = 'blank.model'
         prodigy_list = []
         for name in ['evaluation.jsonl', 'training.jsonl']:
             path = join(root, name)
@@ -26,13 +26,18 @@ def load_pages():
         len(path_pages), pages))
 
 
-RE_URL = re.compile(r'^http://localhost:8000/(.+?)#page=(\d+)$')
+RE_URL = re.compile(r'^http://localhost:8000/(.+?)#page=(\d+)(?:&view=Fit)?$')
 
 
 def collect_pages(ppt_list):
     path_pages = defaultdict(set)
-    for path, page, text in ppt_list:
-        path_pages[path].add(page)
+    all_answers = defaultdict(int)
+    for path, page, text, answer in ppt_list:
+        if answer == 'accept':
+            path_pages[path].add(page)
+        all_answers[answer] += 1
+    print('answers:', sorted(all_answers.items()))
+    # assert False
     return {path: sorted(pages) for path, pages in path_pages.items()}
 
 
@@ -47,12 +52,14 @@ def from_prodigy(json_dict):
     text = json_dict['text']
     meta = json_dict['meta']
     url = meta['url']
+    assert 'answer' in json_dict, json_dict
+    answer = json_dict['answer']
     m = RE_URL.search(url)
     name = m.group(1)
     page = int(m.group(2))
     path = join(pdf_dir, name)
 
-    return path, page, text
+    return path, page, text, answer
 
 
 if __name__ == '__main__':
